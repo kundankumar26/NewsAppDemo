@@ -1,5 +1,6 @@
 package com.example.newsapp;
 
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
@@ -31,13 +32,17 @@ public class MainActivity extends AppCompatActivity {
 
     ArrayList<String> newsTitleList = new ArrayList<>();
     ArrayList<String> newsUrlList = new ArrayList<>();
-    ArrayAdapter<String> arrayAdapter;
+    ArrayList<NewsObject> newsList = new ArrayList<>();
+    NewsAdapter newsAdapter;
     SQLiteDatabase sqlDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        getSupportActionBar().setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+        getSupportActionBar().setCustomView(R.layout.abs_layout);
 
         //CREATING DATABASE
         sqlDatabase = this.openOrCreateDatabase("news", MODE_PRIVATE, null);
@@ -57,16 +62,13 @@ public class MainActivity extends AppCompatActivity {
 
         //CREATING AND SETTING LISTVIEW
         ListView listView = findViewById(R.id.news_listview);
-        arrayAdapter = new ArrayAdapter<>(getApplicationContext(), android.R.layout.simple_list_item_1, newsTitleList);
-        listView.setAdapter(arrayAdapter);
+        newsAdapter = new NewsAdapter(this, newsList);
+        listView.setAdapter(newsAdapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent intent = new Intent(getApplicationContext(), SecondActivity.class);
-                //Intent i = new Intent(Intent.ACTION_VIEW);
-                //i.setData(Uri.parse(newsUrlList.get(position)));
-                //startActivity(i);
-                intent.putExtra("url", newsUrlList.get(position));
+                intent.putExtra("url", newsList.get(position).getUrl());
                 startActivity(intent);
             }
         });
@@ -83,7 +85,9 @@ public class MainActivity extends AppCompatActivity {
             //String num = c.getString(c.getColumnIndex("ContactNumber"));
             newsTitleList.clear();
             newsUrlList.clear();
+            newsList.clear();
             do {
+                newsList.add(new NewsObject(c.getString(articleTitleIndex), c.getString(articleUrlIndex)));
                 newsTitleList.add(c.getString(articleTitleIndex));
                 newsUrlList.add(c.getString(articleUrlIndex));
             }
@@ -105,14 +109,14 @@ public class MainActivity extends AppCompatActivity {
                 //CHECK IF THE RETURNED STRING IS NULL
                 if(jsonString != null){
                     JSONArray jsonArray = new JSONArray(jsonString);
-                    int limitArticles = 20;
-                    if(jsonArray.length() < limitArticles){
-                        limitArticles = jsonArray.length();
-                    }
+//                    int limitArticles = 20;
+//                    if(jsonArray.length() < limitArticles){
+//                        limitArticles = jsonArray.length();
+//                    }
                     sqlDatabase.execSQL("DELETE FROM articles");
 
                     //CREATING THE TOP ARTICLES AND STORING IN DATABASE
-                    for(int i = 0; i < limitArticles; i++){
+                    for(int i = 0; i < jsonArray.length(); i++){
 
                         //GET THE JSON OBJECT STRING OF EACH ARTICLE
                         String articleNumber = jsonArray.getString(i);
@@ -124,10 +128,7 @@ public class MainActivity extends AppCompatActivity {
                             String articleId = articleJsonObject.getString("id");
                             String articleTitle = articleJsonObject.getString("title");
                             String articleUrl = articleJsonObject.getString("url");
-                            //Log.i("Donwload Task", articleTitle + "\n" + articleUrl + "\n");
-//                            if(articleTitle != null && articleUrl != null){
-//
-//                            }
+
                             String sql = "INSERT INTO articles(articleid, title, url) VALUES(?, ?, ?)";
                             SQLiteStatement statement = sqlDatabase.compileStatement(sql);
                             statement.bindString(1, articleId);
@@ -147,13 +148,6 @@ public class MainActivity extends AppCompatActivity {
 
             return null;
         }
-
-        @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
-
-        }
-
 
 
         /**
